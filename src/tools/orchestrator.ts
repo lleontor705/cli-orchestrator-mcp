@@ -39,7 +39,7 @@ export function registerOrchestratorTools(server: McpServer): void {
   );
 
   server.tool(
-    "cli_status",
+    "cli_stats",
     "Health dashboard showing per-provider installation status, circuit breaker state, and usage stats.",
     {},
     async () => {
@@ -62,6 +62,25 @@ export function registerOrchestratorTools(server: McpServer): void {
 
       return {
         content: [{ type: "text" as const, text: JSON.stringify({ providers: status }) }],
+      };
+    }
+  );
+
+  server.tool(
+    "cli_list",
+    "List installed CLI providers with their paths.",
+    {},
+    async () => {
+      const detections = await detectAll();
+      const installed: Record<string, unknown>[] = [];
+      for (const provider of CLI_PROVIDERS) {
+        const det = detections.get(provider);
+        if (det?.installed) {
+          installed.push({ provider, path: det.path, strengths: CLI_DEFINITIONS[provider].strengths });
+        }
+      }
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify({ installed_count: installed.length, providers: installed }) }],
       };
     }
   );
