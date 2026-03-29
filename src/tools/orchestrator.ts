@@ -1,0 +1,115 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { CLI_PROVIDERS, AGENT_ROLES, ROLE_ROUTING } from "../types/index.js";
+import { CLI_DEFINITIONS } from "../cli/definitions.js";
+import { detectAll, getDetectionCache } from "../cli/detection.js";
+import { getAllStates } from "../cli/circuit-breaker.js";
+import { executeWithResilience } from "../cli/resilience.js";
+
+export function registerOrchestratorTools(server: McpServer): void {
+  server.tool(
+    "cli_execute",
+    "Execute a task on a CLI (Claude, Gemini, or Codex) with automatic retry, circuit breaker, and fallback to other providers.",
+    {
+      cli: z.enum(CLI_PROVIDERS).describe("Target CLI provider"),
+      prompt: z.string().min(1).max(100000).describe("Prompt to send to the CLI"),
+      mode: z.enum(["generate", "analyze"]).default("generate").describe("Execution mode"),
+      timeout_seconds: z.number().min(10).max(1800).default(720).describe("Timeout in seconds"),
+      allow_fallback: z.boolean().default(true).describe("Allow fallback to other CLIs on failure"),
+    },
+    async ({ cli, prompt, mode, timeout_seconds, allow_fallback }) => {
+      await detectAll();
+      const result = await executeWithResilience(cli, prompt, mode, timeout_seconds, allow_fallback);
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: result.success,
+            provider: result.provider,
+            output: result.output.slice(0, 50000), // Cap output
+            duration_ms: result.duration_ms,
+            fallback_used: result.fallback_used,
+            attempts: result.attempts,
+            error: result.error,
+          }),
+        }],
+      };
+    }
+  );
+
+  server.tool(
+    "cli_status",
+    "Health dashboard showing per-provider installation status, circuit breaker state, and usage stats.",
+    {},
+    async () => {
+      const detections = await detectAll();
+      const breakers = getAllStates();
+
+      const status: Record<string, unknown> = {};
+      for (const provider of CLI_PROVIDERS) {
+        const det = detections.get(provider);
+        const cb = breakers.get(provider);
+        status[provider] = {
+          installed: det?.installed ?? false,
+          path: det?.path ?? null,
+          circuit_breaker: cb?.state ?? "closed",
+          total_executions: cb?.total_executions ?? 0,
+          total_failures: cb?.total_failures ?? 0,
+          strengths: CLI_DEFINITIONS[provider].strengths,
+        };
+      }
+
+      return {
+        content: [{ type: "text" as const, text: JSON.stringify({ providers: status }) }],
+      };
+    }
+  );
+
+  server.tool(
+    "cli_route",
+    "Suggest the best CLI for a task based on agent role. Returns recommended provider with reasoning and fallback chain.",
+    {
+      role: z.enum(AGENT_ROLES).describe("Agent role"),
+      task_description: z.string().optional().describe("Brief task description for context"),
+    },
+    async ({ role, task_description }) => {
+      const routing = ROLE_ROUTING[role];
+      const detections = await detectAll();
+      const breakers = getAllStates();
+
+      // Find first available provider in chain
+      const chain = [routing.primary, ...routing.fallbacks];
+      let recommended = routing.primary;
+      const availability: Record<string, boolean> = {};
+
+      for (const provider of chain) {
+        const det = detections.get(provider);
+        const cb = breakers.get(provider);
+        const available = (det?.installed ?? false) && (cb?.state !== "open");
+        availability[provider] = available;
+        if (available && recommended === routing.primary && !availability[routing.primary]) {
+          recommended = provider;
+        }
+      }
+
+      if (!availability[routing.primary]) {
+        recommended = chain.find(p => availability[p]) || routing.primary;
+      }
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            role,
+            task_description,
+            recommended_cli: recommended,
+            reasoning: `Role "${role}" maps to ${routing.primary} (${CLI_DEFINITIONS[routing.primary].strengths.join(", ")})${recommended !== routing.primary ? `. Falling back to ${recommended} because ${routing.primary} is unavailable.` : "."}`,
+            fallback_chain: chain,
+            availability,
+          }),
+        }],
+      };
+    }
+  );
+}
