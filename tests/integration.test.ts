@@ -31,12 +31,12 @@ describe("MCP Integration", () => {
     expect(names).toEqual(["cli_execute", "cli_list", "cli_route", "cli_stats"]);
   });
 
-  it("cli_stats returns all 3 providers with expected fields", async () => {
+  it("cli_stats returns all 4 providers with expected fields", async () => {
     const result = await client.callTool({ name: "cli_stats", arguments: {} });
     const text = (result.content as Array<{ type: string; text: string }>)[0].text;
     const data = JSON.parse(text);
     expect(data.providers).toBeDefined();
-    for (const provider of ["claude", "gemini", "codex"]) {
+    for (const provider of ["claude", "gemini", "codex", "ollama"]) {
       const p = data.providers[provider];
       expect(p).toBeDefined();
       expect(typeof p.installed).toBe("boolean");
@@ -103,4 +103,22 @@ describe("MCP Integration", () => {
     expect(data.provider).toBeDefined();
     expect(typeof data.duration_ms).toBe("number");
   }, 30000);
+
+  it("cli_execute correctly accepts cwd and env arguments", async () => {
+    // Similarly, we just verify it doesn't crash from schema validation
+    const result = await client.callTool({
+      name: "cli_execute",
+      arguments: {
+        cli: "ollama",
+        prompt: "test prompt",
+        cwd: "/tmp",
+        env: { "TEST_VAR": "123" },
+        timeout_seconds: 10,
+        allow_fallback: false,
+      },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const data = JSON.parse(text);
+    expect(typeof data.success).toBe("boolean");
+  });
 });

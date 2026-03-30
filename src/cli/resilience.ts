@@ -31,7 +31,10 @@ export async function executeWithResilience(
   mode: "generate" | "analyze",
   timeoutSeconds: number,
   allowFallback: boolean,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  cwd?: string,
+  env?: Record<string, string>,
+  onLog?: (msg: string, level: "info" | "error" | "warning") => void
 ): Promise<ExecutionResult> {
   const chain: CliProvider[] = [primary];
   if (allowFallback) {
@@ -43,21 +46,28 @@ export async function executeWithResilience(
   for (const provider of chain) {
     const detection = await detectCli(provider);
     if (!detection.installed) {
-      errors.push(`${provider}: not installed`);
+      const err = `${provider}: not installed`;
+      errors.push(err);
+      onLog?.(err, "warning");
       continue;
     }
 
     if (!canExecute(provider)) {
-      errors.push(`${provider}: circuit breaker open`);
+      const err = `${provider}: circuit breaker open`;
+      errors.push(err);
+      onLog?.(err, "warning");
       continue;
     }
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
-        await sleep(getDelay(attempt - 1));
+        const delay = getDelay(attempt - 1);
+        onLog?.(`Retrying ${provider} (attempt ${attempt}) after ${Math.round(delay)}ms...`, "info");
+        await sleep(delay);
       }
 
-      const result = await executeCli(provider, prompt, mode, timeoutSeconds, signal);
+      onLog?.(`Executing with ${provider}...`, "info");
+      const result = await executeCli(provider, prompt, mode, timeoutSeconds, signal, cwd, env);
 
       if (result.exitCode === 0 && result.stdout) {
         recordSuccess(provider);
@@ -72,17 +82,26 @@ export async function executeWithResilience(
       }
 
       if (!isRetryable(result.stderr)) {
-        errors.push(`${provider}: ${result.stderr || "non-retryable failure"}`);
+        const err = `${provider}: ${result.stderr || "non-retryable failure"}`;
+        errors.push(err);
+        onLog?.(err, "error");
         recordFailure(provider);
         break;
       }
 
+      const err = `${provider}: failed with retryable error (attempt ${attempt}) — ${result.stderr}`;
+      onLog?.(err, "warning");
+
       if (attempt === MAX_RETRIES) {
-        errors.push(`${provider}: exhausted retries — ${result.stderr}`);
+        const exhaustErr = `${provider}: exhausted retries — ${result.stderr}`;
+        errors.push(exhaustErr);
+        onLog?.(exhaustErr, "error");
         recordFailure(provider);
       }
     }
   }
+
+  onLog?.("All providers failed", "error");
 
   return {
     success: false,

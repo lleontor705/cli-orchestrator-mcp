@@ -64,7 +64,9 @@ export async function executeCli(
   prompt: string,
   mode: "generate" | "analyze",
   timeoutSeconds: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  cwd?: string,
+  customEnv?: Record<string, string>
 ): Promise<ExecResult> {
   const binary = CLI_DEFINITIONS[provider].binary;
   const start = Date.now();
@@ -78,7 +80,8 @@ export async function executeCli(
 
   const { file, prefix } = resolveCommand(binary);
   const finalArgs = [...prefix, ...args];
-  const env = getEnhancedEnv();
+  const env = getEnhancedEnv() || process.env;
+  const mergedEnv = customEnv ? { ...env, ...customEnv } : env;
 
   try {
     const result = await execa(file, finalArgs, {
@@ -88,7 +91,8 @@ export async function executeCli(
       input: useStdin ? prompt : undefined,
       reject: false,
       cancelSignal: signal,
-      ...(env ? { env } : {}),
+      cwd,
+      env: mergedEnv as Record<string, string>,
     });
 
     return {

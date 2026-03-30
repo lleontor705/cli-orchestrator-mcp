@@ -34,6 +34,11 @@ describe("CLI Definitions", () => {
     expect(args[0]).toBe("exec");
     expect(args).toContain("--full-auto");
   });
+
+  it("builds correct args for ollama", () => {
+    const args = buildArgs("ollama", "test", "generate");
+    expect(args).toEqual(["run", "llama3", "test"]);
+  });
 });
 
 describe("Role Routing", () => {

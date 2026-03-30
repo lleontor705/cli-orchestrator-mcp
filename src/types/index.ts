@@ -1,4 +1,4 @@
-export const CLI_PROVIDERS = ["claude", "gemini", "codex"] as const;
+export const CLI_PROVIDERS = ["claude", "gemini", "codex", "ollama"] as const;
 export type CliProvider = (typeof CLI_PROVIDERS)[number];
 
 export const AGENT_ROLES = ["manager", "coordinator", "developer", "researcher", "reviewer", "architect"] as const;
@@ -38,10 +38,10 @@ export interface ExecutionResult {
 }
 
 export const ROLE_ROUTING: Record<AgentRole, { primary: CliProvider; fallbacks: CliProvider[] }> = {
-  manager: { primary: "gemini", fallbacks: ["claude", "codex"] },
-  coordinator: { primary: "claude", fallbacks: ["gemini", "codex"] },
-  developer: { primary: "codex", fallbacks: ["claude", "gemini"] },
-  researcher: { primary: "gemini", fallbacks: ["claude"] },
-  reviewer: { primary: "claude", fallbacks: ["gemini"] },
-  architect: { primary: "claude", fallbacks: ["gemini"] },
+  manager: { primary: "gemini", fallbacks: ["claude", "codex", "ollama"] },
+  coordinator: { primary: "claude", fallbacks: ["gemini", "codex", "ollama"] },
+  developer: { primary: "codex", fallbacks: ["claude", "gemini", "ollama"] },
+  researcher: { primary: "gemini", fallbacks: ["claude", "ollama"] },
+  reviewer: { primary: "claude", fallbacks: ["gemini", "ollama"] },
+  architect: { primary: "claude", fallbacks: ["gemini", "ollama"] },
 };

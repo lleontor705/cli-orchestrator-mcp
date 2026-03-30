@@ -44,16 +44,18 @@ const ROUTE_ANNOTATIONS: ToolAnnotations = {
 export function registerOrchestratorTools(server: McpServer): void {
   server.tool(
     "cli_execute",
-    "Execute a task on a CLI (Claude, Gemini, or Codex) with automatic retry, circuit breaker, and fallback to other providers.",
+    "Execute a task on a CLI (Claude, Gemini, Codex, or Ollama) with automatic retry, circuit breaker, and fallback to other providers.",
     {
       cli: z.enum(CLI_PROVIDERS).describe("Target CLI provider"),
       prompt: z.string().min(1).max(100000).describe("Prompt to send to the CLI"),
       mode: z.enum(["generate", "analyze"]).default("generate").describe("Execution mode"),
       timeout_seconds: z.number().min(10).max(1800).default(720).describe("Timeout in seconds"),
       allow_fallback: z.boolean().default(true).describe("Allow fallback to other CLIs on failure"),
+      cwd: z.string().optional().describe("Working directory for execution"),
+      env: z.record(z.string()).optional().describe("Environment variables"),
     },
     EXECUTE_ANNOTATIONS,
-    async ({ cli, prompt, mode, timeout_seconds, allow_fallback }, extra) => {
+    async ({ cli, prompt, mode, timeout_seconds, allow_fallback, cwd, env }, extra) => {
       await detectAll();
 
       const progressToken = extra._meta?.progressToken;
@@ -76,7 +78,21 @@ export function registerOrchestratorTools(server: McpServer): void {
       }
 
       try {
-        const result = await executeWithResilience(cli, prompt, mode, timeout_seconds, allow_fallback, extra.signal);
+        const result = await executeWithResilience(
+          cli,
+          prompt,
+          mode,
+          timeout_seconds,
+          allow_fallback,
+          extra.signal,
+          cwd,
+          env,
+          (msg, level) => {
+            // MCP standard logging levels
+            const mcpLevel = level === "error" ? "error" : level === "warning" ? "warning" : "info";
+            server.server.sendLoggingMessage({ level: mcpLevel, data: msg }).catch(() => {});
+          }
+        );
 
         return {
           content: [{
@@ -185,5 +201,69 @@ export function registerOrchestratorTools(server: McpServer): void {
         }],
       };
     }
+  );
+
+  // --- Register Resources ---
+  server.resource(
+    "cli-stats",
+    "mcp://cli-stats",
+    async (uri) => {
+      const detections = await detectAll();
+      const breakers = getAllStates();
+      const status: Record<string, unknown> = {};
+
+      for (const provider of CLI_PROVIDERS) {
+        const det = detections.get(provider);
+        const cb = breakers.get(provider);
+        status[provider] = {
+          installed: det?.installed ?? false,
+          circuit_breaker: cb?.state ?? "closed",
+          stats: { executions: cb?.total_executions ?? 0, failures: cb?.total_failures ?? 0 }
+        };
+      }
+      return {
+        contents: [{
+          uri: uri.href,
+          text: JSON.stringify(status, null, 2),
+          mimeType: "application/json"
+        }]
+      };
+    }
+  );
+
+  // --- Register Prompts ---
+  server.prompt(
+    "code_review",
+    "Perform a code review using a CLI",
+    {
+      code: z.string().describe("The code to review"),
+      language: z.string().optional().describe("Programming language")
+    },
+    ({ code, language }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Please review the following ${language ? language + " " : ""}code for bugs, performance issues, and best practices:\n\n\`\`\`\n${code}\n\`\`\``
+        }
+      }]
+    })
+  );
+
+  server.prompt(
+    "architecture_design",
+    "Design system architecture based on requirements",
+    {
+      requirements: z.string().describe("System requirements")
+    },
+    ({ requirements }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `Please design a system architecture for the following requirements. Include component interactions and tech stack recommendations:\n\n${requirements}`
+        }
+      }]
+    })
   );
 }
