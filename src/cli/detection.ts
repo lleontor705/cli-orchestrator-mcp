@@ -1,4 +1,4 @@
-import { execa, execaCommand } from "execa";
+import { execa } from "execa";
 import type { CliProvider, DetectionResult } from "../types/index.js";
 import { CLI_DEFINITIONS } from "./definitions.js";
 
@@ -21,22 +21,7 @@ function isCacheValid(entry: CacheEntry): boolean {
 }
 
 async function runWhich(binary: string): Promise<string> {
-  // Prefer array-based execa for reliability on Windows (avoids shell interpolation).
-  // Falls back to execaCommand for environments where only execaCommand is provided.
-  try {
-    if (execa) {
-      const { stdout } = await execa(whichCmd, [binary], {
-        timeout: 5000,
-        windowsHide: true,
-      });
-      return stdout;
-    }
-  } catch (e: any) {
-    // If execa array-based call failed, don't fall back — propagate the error
-    // (it means the binary was genuinely not found)
-    if (e?.exitCode !== undefined || e?.message?.includes("not found")) throw e;
-  }
-  const { stdout } = await execaCommand(`${whichCmd} ${binary}`, {
+  const { stdout } = await execa(whichCmd, [binary], {
     timeout: 5000,
     windowsHide: true,
   });
@@ -80,7 +65,7 @@ export async function detectAll(): Promise<Map<CliProvider, DetectionResult>> {
   if (detected && Date.now() - detectedAt < CACHE_TTL_MS) {
     return new Map([...cache].map(([k, v]) => [k, v.result]));
   }
-  const providers: CliProvider[] = ["claude", "gemini", "codex"];
+  const providers: CliProvider[] = ["claude", "gemini", "codex", "ollama"];
   await Promise.all(providers.map(detectCli));
   detected = true;
   detectedAt = Date.now();
