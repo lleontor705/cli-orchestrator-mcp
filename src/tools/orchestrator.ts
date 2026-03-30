@@ -123,24 +123,16 @@ export function registerOrchestratorTools(server: McpServer): void {
       const detections = await detectAll();
       const breakers = getAllStates();
 
-      // Find first available provider in chain
       const chain = [routing.primary, ...routing.fallbacks];
-      let recommended = routing.primary;
       const availability: Record<string, boolean> = {};
 
       for (const provider of chain) {
         const det = detections.get(provider);
         const cb = breakers.get(provider);
-        const available = (det?.installed ?? false) && (cb?.state !== "open");
-        availability[provider] = available;
-        if (available && recommended === routing.primary && !availability[routing.primary]) {
-          recommended = provider;
-        }
+        availability[provider] = (det?.installed ?? false) && (cb?.state !== "open");
       }
 
-      if (!availability[routing.primary]) {
-        recommended = chain.find(p => availability[p]) || routing.primary;
-      }
+      const recommended = chain.find(p => availability[p]) || routing.primary;
 
       return {
         content: [{

@@ -26,7 +26,7 @@ export function buildArgs(
   switch (provider) {
     case "claude":
       return mode === "analyze"
-        ? ["--max-turns", "10", "-p", prompt]
+        ? ["--max-turns", "2", "-p", prompt]
         : ["-p", prompt];
     case "gemini":
       return ["-e", "none", "-p", prompt];

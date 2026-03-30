@@ -1,11 +1,11 @@
 {
   "name": "cli-orchestrator-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP Server for resilient multi-CLI orchestration — route AI tasks to Claude, Gemini, or Codex with retry, circuit breaker, and fallback",
   "type": "module",
   "main": "./build/index.js",
   "bin": {
-    "cli-orchestrator-mcp": "./build/index.js"
+    "cli-orchestrator-mcp": "build/index.js"
   },
   "files": [
     "build"
@@ -34,7 +34,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lleontor705/cli-orchestrator-mcp"
+    "url": "git+https://github.com/lleontor705/cli-orchestrator-mcp.git"
   },
   "engines": {
     "node": ">=18"

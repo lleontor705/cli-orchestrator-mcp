@@ -25,7 +25,7 @@ export async function executeCli(
   const useStdin = prompt.length > STDIN_THRESHOLD;
 
   const args = useStdin
-    ? buildArgs(provider, "<stdin>", mode).map((a) => (a === prompt ? "<stdin>" : a))
+    ? buildArgs(provider, "", mode).filter((a) => a !== "")
     : buildArgs(provider, prompt, mode);
 
   try {
