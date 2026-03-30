@@ -3,6 +3,7 @@ import { detectCli } from "./detection.js";
 import { canExecute, recordSuccess, recordFailure } from "./circuit-breaker.js";
 import { executeCli } from "./executor.js";
 import { CLI_DEFINITIONS } from "./definitions.js";
+import { redactSecrets } from "../utils/redact.js";
 
 const MAX_RETRIES = 2;
 const BASE_DELAY_MS = 1000;
@@ -82,18 +83,18 @@ export async function executeWithResilience(
       }
 
       if (!isRetryable(result.stderr)) {
-        const err = `${provider}: ${result.stderr || "non-retryable failure"}`;
+        const err = redactSecrets(`${provider}: ${result.stderr || "non-retryable failure"}`);
         errors.push(err);
         onLog?.(err, "error");
         recordFailure(provider);
         break;
       }
 
-      const err = `${provider}: failed with retryable error (attempt ${attempt}) — ${result.stderr}`;
+      const err = redactSecrets(`${provider}: failed with retryable error (attempt ${attempt}) — ${result.stderr}`);
       onLog?.(err, "warning");
 
       if (attempt === MAX_RETRIES) {
-        const exhaustErr = `${provider}: exhausted retries — ${result.stderr}`;
+        const exhaustErr = redactSecrets(`${provider}: exhausted retries — ${result.stderr}`);
         errors.push(exhaustErr);
         onLog?.(exhaustErr, "error");
         recordFailure(provider);
@@ -110,6 +111,6 @@ export async function executeWithResilience(
     duration_ms: 0,
     fallback_used: false,
     attempts: 0,
-    error: `All providers failed: ${errors.join("; ")}`,
+    error: redactSecrets(`All providers failed: ${errors.join("; ")}`),
   };
 }

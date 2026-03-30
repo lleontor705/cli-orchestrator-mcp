@@ -2,6 +2,7 @@
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
+import { redactSecrets } from "./utils/redact.js";
 
 async function main(): Promise<void> {
   const server = createServer();
@@ -10,6 +11,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error("Fatal error:", error);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error("Fatal error:", redactSecrets(message));
   process.exit(1);
 });
