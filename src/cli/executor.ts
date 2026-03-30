@@ -9,6 +9,8 @@ const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
 
 const isWindows = process.platform === "win32";
 
+let cachedEnhancedEnv: Record<string, string> | undefined;
+
 export interface ExecResult {
   stdout: string;
   stderr: string;
@@ -44,6 +46,7 @@ function resolveCommand(binary: string): { file: string; prefix: string[] } {
 /** Build enhanced PATH that includes common Windows CLI install locations */
 function getEnhancedEnv(): Record<string, string> | undefined {
   if (!isWindows) return undefined;
+  if (cachedEnhancedEnv) return cachedEnhancedEnv;
 
   const home = os.homedir();
   const extraPaths = [
@@ -56,7 +59,8 @@ function getEnhancedEnv(): Record<string, string> | undefined {
   const currentPath = process.env.PATH || "";
   const newPath = [...extraPaths, currentPath].join(path.delimiter);
 
-  return { ...process.env, PATH: newPath } as Record<string, string>;
+  cachedEnhancedEnv = { ...process.env, PATH: newPath } as Record<string, string>;
+  return cachedEnhancedEnv;
 }
 
 export async function executeCli(
