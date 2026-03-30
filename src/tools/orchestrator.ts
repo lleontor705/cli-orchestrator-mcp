@@ -6,6 +6,8 @@ import { detectAll, getDetectionCache } from "../cli/detection.js";
 import { getAllStates } from "../cli/circuit-breaker.js";
 import { executeWithResilience } from "../cli/resilience.js";
 
+const PROGRESS_INTERVAL_MS = 5_000;
+
 export function registerOrchestratorTools(server: McpServer): void {
   server.tool(
     "cli_execute",
@@ -17,24 +19,48 @@ export function registerOrchestratorTools(server: McpServer): void {
       timeout_seconds: z.number().min(10).max(1800).default(720).describe("Timeout in seconds"),
       allow_fallback: z.boolean().default(true).describe("Allow fallback to other CLIs on failure"),
     },
-    async ({ cli, prompt, mode, timeout_seconds, allow_fallback }) => {
+    async ({ cli, prompt, mode, timeout_seconds, allow_fallback }, extra) => {
       await detectAll();
-      const result = await executeWithResilience(cli, prompt, mode, timeout_seconds, allow_fallback);
 
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify({
-            success: result.success,
-            provider: result.provider,
-            output: result.output.slice(0, 50000), // Cap output
-            duration_ms: result.duration_ms,
-            fallback_used: result.fallback_used,
-            attempts: result.attempts,
-            error: result.error,
-          }),
-        }],
-      };
+      const progressToken = extra._meta?.progressToken;
+      let progressTick = 0;
+      let progressTimer: ReturnType<typeof setInterval> | undefined;
+
+      if (progressToken !== undefined) {
+        progressTimer = setInterval(() => {
+          progressTick++;
+          extra.sendNotification({
+            method: "notifications/progress",
+            params: {
+              progressToken,
+              progress: progressTick,
+              total: Math.ceil(timeout_seconds / (PROGRESS_INTERVAL_MS / 1000)),
+              message: `CLI execution in progress (${progressTick * (PROGRESS_INTERVAL_MS / 1000)}s elapsed)`,
+            },
+          }).catch(() => {});
+        }, PROGRESS_INTERVAL_MS);
+      }
+
+      try {
+        const result = await executeWithResilience(cli, prompt, mode, timeout_seconds, allow_fallback);
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              success: result.success,
+              provider: result.provider,
+              output: result.output.slice(0, 50000), // Cap output
+              duration_ms: result.duration_ms,
+              fallback_used: result.fallback_used,
+              attempts: result.attempts,
+              error: result.error,
+            }),
+          }],
+        };
+      } finally {
+        if (progressTimer) clearInterval(progressTimer);
+      }
     }
   );
 
