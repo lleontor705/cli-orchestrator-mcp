@@ -1,6 +1,6 @@
 {
   "name": "cli-orchestrator-mcp",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "MCP Server for resilient multi-CLI orchestration — route AI tasks to Claude, Gemini, or Codex with retry, circuit breaker, and fallback",
   "type": "module",
   "main": "./build/index.js",

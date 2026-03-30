@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { CLI_PROVIDERS, AGENT_ROLES, ROLE_ROUTING } from "../types/index.js";
 import { CLI_DEFINITIONS } from "../cli/definitions.js";
@@ -7,6 +8,38 @@ import { getAllStates } from "../cli/circuit-breaker.js";
 import { executeWithResilience } from "../cli/resilience.js";
 
 const PROGRESS_INTERVAL_MS = 5_000;
+
+const EXECUTE_ANNOTATIONS: ToolAnnotations = {
+  title: "Execute CLI",
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+const STATS_ANNOTATIONS: ToolAnnotations = {
+  title: "CLI Stats",
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const LIST_ANNOTATIONS: ToolAnnotations = {
+  title: "List CLIs",
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
+const ROUTE_ANNOTATIONS: ToolAnnotations = {
+  title: "Route CLI",
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
 export function registerOrchestratorTools(server: McpServer): void {
   server.tool(
@@ -19,6 +52,7 @@ export function registerOrchestratorTools(server: McpServer): void {
       timeout_seconds: z.number().min(10).max(1800).default(720).describe("Timeout in seconds"),
       allow_fallback: z.boolean().default(true).describe("Allow fallback to other CLIs on failure"),
     },
+    EXECUTE_ANNOTATIONS,
     async ({ cli, prompt, mode, timeout_seconds, allow_fallback }, extra) => {
       await detectAll();
 
@@ -42,7 +76,7 @@ export function registerOrchestratorTools(server: McpServer): void {
       }
 
       try {
-        const result = await executeWithResilience(cli, prompt, mode, timeout_seconds, allow_fallback);
+        const result = await executeWithResilience(cli, prompt, mode, timeout_seconds, allow_fallback, extra.signal);
 
         return {
           content: [{
@@ -68,6 +102,7 @@ export function registerOrchestratorTools(server: McpServer): void {
     "cli_stats",
     "Health dashboard showing per-provider installation status, circuit breaker state, and usage stats.",
     {},
+    STATS_ANNOTATIONS,
     async () => {
       const detections = await detectAll();
       const breakers = getAllStates();
@@ -96,6 +131,7 @@ export function registerOrchestratorTools(server: McpServer): void {
     "cli_list",
     "List installed CLI providers with their paths.",
     {},
+    LIST_ANNOTATIONS,
     async () => {
       const detections = await detectAll();
       const installed: Record<string, unknown>[] = [];
@@ -118,6 +154,7 @@ export function registerOrchestratorTools(server: McpServer): void {
       role: z.enum(AGENT_ROLES).describe("Agent role"),
       task_description: z.string().optional().describe("Brief task description for context"),
     },
+    ROUTE_ANNOTATIONS,
     async ({ role, task_description }) => {
       const routing = ROLE_ROUTING[role];
       const detections = await detectAll();

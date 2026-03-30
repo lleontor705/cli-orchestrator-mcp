@@ -30,7 +30,8 @@ export async function executeWithResilience(
   prompt: string,
   mode: "generate" | "analyze",
   timeoutSeconds: number,
-  allowFallback: boolean
+  allowFallback: boolean,
+  signal?: AbortSignal
 ): Promise<ExecutionResult> {
   const chain: CliProvider[] = [primary];
   if (allowFallback) {
@@ -56,7 +57,7 @@ export async function executeWithResilience(
         await sleep(getDelay(attempt - 1));
       }
 
-      const result = await executeCli(provider, prompt, mode, timeoutSeconds);
+      const result = await executeCli(provider, prompt, mode, timeoutSeconds, signal);
 
       if (result.exitCode === 0 && result.stdout) {
         recordSuccess(provider);
