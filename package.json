@@ -32,6 +32,9 @@
   ],
   "author": "lleontor705",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lleontor705/cli-orchestrator-mcp.git"
