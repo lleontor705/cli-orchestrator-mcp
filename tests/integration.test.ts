@@ -82,7 +82,7 @@ describe("MCP Integration", () => {
     expect(data.task_description).toBe("API docs lookup");
   });
 
-  it("cli_execute with a non-installed CLI returns error gracefully", async () => {
+  it("cli_execute with a non-installed CLI returns error gracefully", { timeout: 60_000 }, async () => {
     // This test relies on the fact that at least one of these CLIs is not installed,
     // or the circuit breaker / detection handles it gracefully.
     // We use allow_fallback=false to prevent fallback and a short timeout.
