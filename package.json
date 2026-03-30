@@ -1,11 +1,15 @@
 {
   "name": "cli-orchestrator-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP Server for resilient multi-CLI orchestration — route AI tasks to Claude, Gemini, or Codex with retry, circuit breaker, and fallback",
   "type": "module",
   "main": "./build/index.js",
-  "bin": { "cli-orchestrator-mcp": "./build/index.js" },
-  "files": ["build"],
+  "bin": {
+    "cli-orchestrator-mcp": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
@@ -15,11 +19,26 @@
     "prepublishOnly": "npm run build && npm test",
     "inspect": "npx @modelcontextprotocol/inspector node build/index.js"
   },
-  "keywords": ["mcp", "model-context-protocol", "cli", "orchestrator", "claude", "gemini", "codex", "multi-agent", "resilience"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cli",
+    "orchestrator",
+    "claude",
+    "gemini",
+    "codex",
+    "multi-agent",
+    "resilience"
+  ],
   "author": "lleontor705",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/lleontor705/cli-orchestrator-mcp" },
-  "engines": { "node": ">=18" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lleontor705/cli-orchestrator-mcp"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
     "execa": "^9.6.0",
