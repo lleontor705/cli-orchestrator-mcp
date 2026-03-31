@@ -1,9 +1,14 @@
+/**
+ * Core Execution Engine — runs a CLI binary via execa with structured output.
+ * Aligned with opencode-cli-enforcer's inline execution approach.
+ */
+
 import { execa } from "execa";
 import path from "node:path";
 import os from "node:os";
 import type { CliProvider } from "../types/index.js";
-import { CLI_DEFINITIONS, buildArgs } from "./definitions.js";
-import { buildFilteredEnv } from "../utils/env-allowlist.js";
+import { CLI_DEFINITIONS, buildArgs, buildStdinArgs } from "./definitions.js";
+import { getSafeEnv } from "../utils/env-allowlist.js";
 import { redactSecrets } from "../utils/redact.js";
 
 const STDIN_THRESHOLD = 30_000;
@@ -21,39 +26,34 @@ export interface ExecResult {
 
 /**
  * On Windows, CLIs installed via npm/scoop/cargo may be .cmd/.bat shims.
- * When launched without a shell (e.g., from editors like VS Code or OpenCode),
- * execa cannot execute .cmd files directly. This helper detects that case and
- * wraps the invocation with `cmd /c`.
+ * Wrap with `cmd /c` so execa can execute them without a shell.
  */
 function resolveCommand(binary: string): { file: string; prefix: string[] } {
   if (!isWindows) return { file: binary, prefix: [] };
 
-  // Check common extensions for Windows shims
   const ext = path.extname(binary).toLowerCase();
   if (ext === ".cmd" || ext === ".bat") {
     return { file: "cmd", prefix: ["/c", binary] };
   }
 
-  // For bare names, check if a .cmd shim exists via PATHEXT
   const pathext = (process.env.PATHEXT || "").toLowerCase();
   if (pathext.includes(".cmd") || pathext.includes(".bat")) {
-    // Let cmd handle the PATH resolution for .cmd shims
     return { file: "cmd", prefix: ["/c", binary] };
   }
 
   return { file: binary, prefix: [] };
 }
 
-/** Build enhanced PATH that includes common Windows CLI install locations */
+/** Enhance PATH on Windows with common CLI install locations */
 function getEnhancedPath(): string | undefined {
   if (!isWindows) return undefined;
 
   const home = os.homedir();
   const extraPaths = [
-    path.join(home, "AppData", "Roaming", "npm"),          // npm global
-    path.join(home, "scoop", "shims"),                      // scoop
-    path.join(home, ".cargo", "bin"),                        // cargo
-    path.join(home, "AppData", "Local", "pnpm"),            // pnpm global
+    path.join(home, "AppData", "Roaming", "npm"),
+    path.join(home, "scoop", "shims"),
+    path.join(home, ".cargo", "bin"),
+    path.join(home, "AppData", "Local", "pnpm"),
   ];
 
   const currentPath = process.env.PATH || "";
@@ -67,48 +67,36 @@ export async function executeCli(
   timeoutSeconds: number,
   signal?: AbortSignal,
   cwd?: string,
-  customEnv?: Record<string, string>
 ): Promise<ExecResult> {
   const binary = CLI_DEFINITIONS[provider].binary;
   const start = Date.now();
 
-  // For large prompts, use stdin to avoid OS arg length limits
   const useStdin = prompt.length > STDIN_THRESHOLD;
-
-  // Build args as array — never via string concatenation / shell: true
   const args = useStdin
-    ? buildArgs(provider, "", mode).filter((a) => a !== "")
+    ? buildStdinArgs(provider, mode)
     : buildArgs(provider, prompt, mode);
 
   const { file, prefix } = resolveCommand(binary);
   const finalArgs = [...prefix, ...args];
 
-  // Build filtered env: only allowlisted vars + provider API keys
-  const filteredEnv = buildFilteredEnv(provider, customEnv);
-
-  // Enhance PATH on Windows
+  // Safe env — CLIs handle their own auth inline
+  const env = getSafeEnv();
   const enhancedPath = getEnhancedPath();
   if (enhancedPath) {
-    filteredEnv.PATH = enhancedPath;
+    env.PATH = enhancedPath;
   }
-
-  const timeoutMs = timeoutSeconds * 1000;
-
-  const baseOptions = {
-    timeout: timeoutMs,
-    windowsHide: true,
-    input: useStdin ? prompt : undefined,
-    reject: false,
-    cancelSignal: signal,
-    cwd,
-    env: filteredEnv,
-  } as const;
 
   try {
     const result = await execa(file, finalArgs, {
       ...baseOptions,
       maxBuffer: MAX_BUFFER,
-    } as any);
+      reject: false,
+      windowsHide: true,
+      env,
+      ...(useStdin ? { input: prompt } : {}),
+      ...(signal ? { cancelSignal: signal } : {}),
+      ...(cwd ? { cwd } : {}),
+    });
 
     return {
       stdout: result.stdout || "",

@@ -31,12 +31,12 @@ describe("MCP Integration", () => {
     expect(names).toEqual(["cli_execute", "cli_list", "cli_route", "cli_stats"]);
   });
 
-  it("cli_stats returns all 4 providers with expected fields", async () => {
+  it("cli_stats returns all 3 providers with expected fields", async () => {
     const result = await client.callTool({ name: "cli_stats", arguments: {} });
     const text = (result.content as Array<{ type: string; text: string }>)[0].text;
     const data = JSON.parse(text);
     expect(data.providers).toBeDefined();
-    for (const provider of ["claude", "gemini", "codex", "ollama"]) {
+    for (const provider of ["claude", "gemini", "codex"]) {
       const p = data.providers[provider];
       expect(p).toBeDefined();
       expect(typeof p.installed).toBe("boolean");
@@ -82,10 +82,7 @@ describe("MCP Integration", () => {
     expect(data.task_description).toBe("API docs lookup");
   });
 
-  it("cli_execute with a non-installed CLI returns error gracefully", { timeout: 60_000 }, async () => {
-    // This test relies on the fact that at least one of these CLIs is not installed,
-    // or the circuit breaker / detection handles it gracefully.
-    // We use allow_fallback=false to prevent fallback and a short timeout.
+  it("cli_execute with a non-installed CLI returns error gracefully", async () => {
     const result = await client.callTool({
       name: "cli_execute",
       arguments: {
@@ -98,21 +95,18 @@ describe("MCP Integration", () => {
     });
     const text = (result.content as Array<{ type: string; text: string }>)[0].text;
     const data = JSON.parse(text);
-    // Whether success or failure, we should get a well-formed response
     expect(typeof data.success).toBe("boolean");
     expect(data.provider).toBeDefined();
     expect(typeof data.duration_ms).toBe("number");
-  }, 30000);
+  }, 30_000);
 
-  it("cli_execute correctly accepts cwd and env arguments", async () => {
-    // Similarly, we just verify it doesn't crash from schema validation
+  it("cli_execute accepts cwd argument", async () => {
     const result = await client.callTool({
       name: "cli_execute",
       arguments: {
-        cli: "ollama",
+        cli: "claude",
         prompt: "test prompt",
         cwd: "/tmp",
-        env: { "TEST_VAR": "123" },
         timeout_seconds: 10,
         allow_fallback: false,
       },
@@ -120,5 +114,5 @@ describe("MCP Integration", () => {
     const text = (result.content as Array<{ type: string; text: string }>)[0].text;
     const data = JSON.parse(text);
     expect(typeof data.success).toBe("boolean");
-  });
+  }, 30_000);
 });

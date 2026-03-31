@@ -45,7 +45,7 @@ const ROUTE_ANNOTATIONS: ToolAnnotations = {
 export function registerOrchestratorTools(server: McpServer): void {
   server.tool(
     "cli_execute",
-    "Execute a task on a CLI (Claude, Gemini, Codex, or Ollama) with automatic retry, circuit breaker, and fallback to other providers.",
+    "Execute a task on a CLI (Claude, Gemini, or Codex) inline with automatic retry, circuit breaker, and fallback.",
     {
       cli: z.enum(CLI_PROVIDERS).describe("Target CLI provider"),
       prompt: z.string().min(1).max(100000).describe("Prompt to send to the CLI"),
@@ -53,10 +53,9 @@ export function registerOrchestratorTools(server: McpServer): void {
       timeout_seconds: z.number().min(10).max(1800).default(720).describe("Timeout in seconds"),
       allow_fallback: z.boolean().default(true).describe("Allow fallback to other CLIs on failure"),
       cwd: z.string().optional().describe("Working directory for execution"),
-      env: z.record(z.string()).optional().describe("Environment variables"),
     },
     EXECUTE_ANNOTATIONS,
-    async ({ cli, prompt, mode, timeout_seconds, allow_fallback, cwd, env }, extra) => {
+    async ({ cli, prompt, mode, timeout_seconds, allow_fallback, cwd }, extra) => {
       await detectAll();
 
       const progressToken = extra._meta?.progressToken;
@@ -87,7 +86,6 @@ export function registerOrchestratorTools(server: McpServer): void {
           allow_fallback,
           extra.signal,
           cwd,
-          env,
           (msg, level) => {
             // MCP standard logging levels
             const mcpLevel = level === "error" ? "error" : level === "warning" ? "warning" : "info";
