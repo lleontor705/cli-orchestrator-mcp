@@ -1,17 +1,19 @@
 # cli-orchestrator-mcp
 
-MCP Server for **resilient multi-CLI orchestration** — route AI tasks to Claude, Gemini, Codex, or Ollama with automatic retry, circuit breaker, and fallback.
+MCP Server for **resilient multi-CLI orchestration** — execute AI tasks inline via Claude, Gemini, or Codex with automatic retry, circuit breaker, and fallback.
 
-Works with any MCP-compatible client: **Claude Code**, **Codex CLI**, **Gemini CLI**, **OpenClaw**, and more.
+Works with any MCP-compatible client: **Claude Code**, **Codex CLI**, **Gemini CLI**, **OpenCode**, and more.
 
 ## Features
 
+- **Inline CLI Execution** — Runs Claude, Gemini, and Codex directly as installed on your machine (no API keys needed)
 - **Role-based Routing** — Automatically select the best CLI based on agent role
 - **Circuit Breaker** — Per-provider fault isolation (closed → open → half-open)
 - **Retry with Backoff** — Exponential backoff with jitter for transient failures
 - **Automatic Fallback** — If primary CLI fails, try alternatives in order
+- **Abort-aware** — AbortSignal support cancels execution and stops retries immediately
 - **Auto-detection** — Discovers installed CLIs at startup with 5-minute cache
-- **Security Hardening** — Whitelist-based env filtering, secret redaction in logs
+- **Large Prompt Handling** — Prompts >30KB sent via stdin to avoid OS arg-length limits
 - **Cross-platform** — Windows (.cmd/.bat shim support), macOS, Linux
 
 ## Quick Start
@@ -20,7 +22,15 @@ Works with any MCP-compatible client: **Claude Code**, **Codex CLI**, **Gemini C
 npx -y cli-orchestrator-mcp
 ```
 
-**Prerequisites:** Node.js ≥18 and at least one CLI installed: `claude`, `gemini`, `codex`, or `ollama`.
+**Prerequisites:** Node.js ≥18 and at least one CLI installed and authenticated:
+
+| CLI | Install | Auth |
+|-----|---------|------|
+| Claude | `npm i -g @anthropic-ai/claude-code` | `claude` (interactive login) |
+| Gemini | `npm i -g @anthropic-ai/gemini-cli` | `gemini` (Google auth) |
+| Codex | `npm i -g @openai/codex` | `codex` (OpenAI auth) |
+
+CLIs handle their own authentication inline — no API keys or env vars required.
 
 ## Configuration
 
@@ -51,7 +61,7 @@ args = ["-y", "cli-orchestrator-mcp"]
 }
 ```
 
-### OpenClaw (`openclaw.json`)
+### OpenCode (`opencode.json`)
 
 ```json5
 mcp: {
@@ -76,13 +86,20 @@ Execute a prompt on a specific CLI provider with full resilience pipeline.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `cli` | string | Yes | Provider: `claude`, `gemini`, `codex`, or `ollama` |
-| `prompt` | string | Yes | The prompt to send |
+| `cli` | string | Yes | Provider: `claude`, `gemini`, or `codex` |
+| `prompt` | string | Yes | The prompt to send (max 100KB) |
 | `mode` | string | No | `generate` (default) or `analyze` |
-| `timeout_seconds` | number | No | Execution timeout (default: 30s) |
+| `timeout_seconds` | number | No | Execution timeout (default: 720s, max: 1800s) |
 | `allow_fallback` | boolean | No | Enable fallback chain (default: true) |
 | `cwd` | string | No | Working directory for the CLI |
-| `env` | object | No | Additional environment variables |
+
+**CLI Arguments by Provider:**
+
+| Provider | Generate mode | Analyze mode |
+|----------|--------------|--------------|
+| Claude | `-p <prompt> --allowedTools ""` | `-p <prompt> --max-turns 10` |
+| Gemini | `-e none -p <prompt>` | `-e none -p <prompt>` |
+| Codex | `exec <prompt> --full-auto` | `exec <prompt> --full-auto` |
 
 ### `cli_route`
 
@@ -108,12 +125,12 @@ Execute a prompt on a specific CLI provider with full resilience pipeline.
 
 | Role | Primary CLI | Strengths | Fallbacks |
 |------|-------------|-----------|-----------|
-| **Manager** | Gemini | research, trends, large-context | Claude → Codex → Ollama |
-| **Coordinator** | Claude | reasoning, planning, architecture | Gemini → Codex → Ollama |
-| **Developer** | Codex | code-generation, refactoring | Claude → Gemini → Ollama |
-| **Researcher** | Gemini | knowledge, web-search | Claude → Ollama |
-| **Reviewer** | Claude | code-analysis, debugging | Gemini → Ollama |
-| **Architect** | Claude | system design, architecture | Gemini → Ollama |
+| **Manager** | Gemini | research, trends, large-context | Claude → Codex |
+| **Coordinator** | Claude | reasoning, planning, architecture | Gemini → Codex |
+| **Developer** | Codex | code-generation, refactoring | Claude → Gemini |
+| **Researcher** | Gemini | knowledge, web-search | Claude → Codex |
+| **Reviewer** | Claude | code-analysis, debugging | Gemini → Codex |
+| **Architect** | Claude | system design, architecture | Gemini → Codex |
 
 ## Resilience Pipeline
 
@@ -122,7 +139,9 @@ Request → Route by Role → Check Circuit Breaker → Execute CLI
                                                       ↓
                                               Success? → Done
                                               Retryable? → Retry (max 2, exp backoff)
+                                              Timeout? → Skip to Next Provider
                                               Permanent? → Next Provider in Fallback Chain
+                                              Aborted? → Stop Immediately
                                               All Failed? → Return Error
 ```
 
@@ -133,27 +152,22 @@ Request → Route by Role → Check Circuit Breaker → Execute CLI
 
 **Retry Configuration:**
 - Max retries: 2 (3 total attempts)
-- Base delay: 1s with exponential backoff
-- Max delay: 10s
+- Base delay: 1s with exponential backoff (max 10s)
 - Jitter: ±30%
-- Retryable errors: timeouts, rate limits (429), server errors (503)
+- Retryable errors: rate limits (429), server errors (503), ECONNRESET, ETIMEDOUT
+- Non-retryable: timeouts (skip to fallback), auth errors, permanent failures
+
+**Abort Handling:**
+- AbortSignal cancels the running CLI process immediately
+- Retry backoff sleeps are abort-aware — no wasted wait time
+- Signal is checked between retry attempts and between providers
 
 ## Security
 
-- **Environment Filtering** — Whitelist-based: only safe variables forwarded to CLI subprocesses (PATH, HOME, TERM, Node config, and provider-specific API keys)
+- **Safe Environment** — Only essential system variables forwarded to CLI subprocesses (PATH, HOME, TERM, proxy settings)
+- **No API Keys in Env** — CLIs authenticate inline via their own config, no env var secrets needed
 - **Secret Redaction** — API keys and tokens automatically redacted from logs and error output
-- **No Full env Forwarding** — `process.env` is never passed wholesale to child processes
-
-### Required Environment Variables
-
-Each CLI provider requires its own API key:
-
-| Provider | Variables |
-|----------|-----------|
-| Claude | `ANTHROPIC_API_KEY` |
-| Gemini | `GEMINI_API_KEY`, `GOOGLE_API_KEY` |
-| Codex | `OPENAI_API_KEY` |
-| Ollama | `OLLAMA_HOST` (optional, defaults to localhost) |
+- **No Shell Execution** — Commands built as arrays, never via string concatenation or `shell: true`
 
 ## Development
 
@@ -161,12 +175,22 @@ Each CLI provider requires its own API key:
 git clone https://github.com/lleontor705/cli-orchestrator-mcp.git
 cd cli-orchestrator-mcp
 npm install
-npm run dev        # Run in development mode
-npm test           # Run tests
-npm run build      # Compile TypeScript
-npm run lint       # Type-check without emitting
-npm run inspect    # Inspect MCP server with inspector tool
+npm run build         # Compile TypeScript
+npm run dev           # Run in development mode
+npm test              # Unit tests (CI-safe, no CLIs needed)
+npm run test:all      # All tests including stress & integration (local only)
+npm run lint          # Type-check without emitting
+npm run inspect       # Inspect MCP server with inspector tool
 ```
+
+### Test Suites
+
+| Command | Tests | Environment |
+|---------|-------|-------------|
+| `npm test` | Unit tests (definitions, detection, circuit breaker, resilience) | CI — fast, mocked, no real CLIs |
+| `npm run test:all` | Unit + stress + integration | Local — includes timeout stress, concurrency, abort, and real CLI execution |
+
+**Stress tests cover:** timeout enforcement, abort/cancellation, concurrent execution (10+ parallel), fallback chain timing, large output (5MB+), circuit breaker under rapid-fire, large prompt stdin handling.
 
 ## License
 

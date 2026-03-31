@@ -12,15 +12,12 @@ describe("CLI Detection (fresh module per test)", () => {
   beforeEach(() => {
     vi.resetModules();
     mockExeca.mockReset();
-    // Re-register the mock so dynamic imports pick it up
     vi.doMock("execa", () => ({
       execa: mockExeca,
     }));
   });
 
   async function freshDetection() {
-    // Each dynamic import after resetModules gives us a fresh detection module
-    // with empty cache and detected=false
     return await import("../src/cli/detection.js");
   }
 
@@ -62,14 +59,11 @@ describe("CLI Detection (fresh module per test)", () => {
 
     expect(result1).toEqual(result2);
     expect(result1.installed).toBe(true);
-    // execa should only be called once per CLI (version call adds one, so two total for one CLI vs infinite)
-    // Actually our test mocked `execa`, so it applies to both `which` and `version`
     expect(mockExeca).toHaveBeenCalled();
   });
 
-  it("detectAll detects all 4 providers", async () => {
+  it("detectAll detects all 3 providers", async () => {
     mockExeca.mockImplementation((cmd: any, args: any[]) => {
-      // Mock 'which' vs '--version'
       if (args && args.includes("--version")) {
         return Promise.resolve({ stdout: "v1.0.0", stderr: "", exitCode: 0 }) as any;
       }
@@ -84,17 +78,14 @@ describe("CLI Detection (fresh module per test)", () => {
       if (binary === "codex") {
         return Promise.resolve({ stdout: "/usr/bin/codex", stderr: "", exitCode: 0 }) as any;
       }
-      if (binary === "ollama") {
-        return Promise.resolve({ stdout: "/usr/bin/ollama", stderr: "", exitCode: 0 }) as any;
-      }
       return Promise.reject(new Error("unknown"));
     });
 
     const { detectAll } = await freshDetection();
     const results = await detectAll();
 
-    expect(results.size).toBe(4);
-    for (const provider of ["claude", "gemini", "codex", "ollama"] as const) {
+    expect(results.size).toBe(3);
+    for (const provider of ["claude", "gemini", "codex"] as const) {
       const r = results.get(provider);
       expect(r).toBeDefined();
       expect(r!.installed).toBe(true);

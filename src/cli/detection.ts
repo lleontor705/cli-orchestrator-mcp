@@ -65,7 +65,7 @@ export async function detectAll(): Promise<Map<CliProvider, DetectionResult>> {
   if (detected && Date.now() - detectedAt < CACHE_TTL_MS) {
     return new Map([...cache].map(([k, v]) => [k, v.result]));
   }
-  const providers: CliProvider[] = ["claude", "gemini", "codex", "ollama"];
+  const providers: CliProvider[] = ["claude", "gemini", "codex"];
   await Promise.all(providers.map(detectCli));
   detected = true;
   detectedAt = Date.now();

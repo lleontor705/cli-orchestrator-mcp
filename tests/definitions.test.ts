@@ -35,9 +35,10 @@ describe("CLI Definitions", () => {
     expect(args).toContain("--full-auto");
   });
 
-  it("builds correct args for ollama", () => {
-    const args = buildArgs("ollama", "test", "generate");
-    expect(args).toEqual(["run", "llama3", "test"]);
+  it("claude analyze mode uses max-turns", () => {
+    const args = buildArgs("claude", "test", "analyze");
+    expect(args).toContain("--max-turns");
+    expect(args).toContain("10");
   });
 });
 

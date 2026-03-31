@@ -16,8 +16,12 @@ function isRetryable(stderr: string): boolean {
   return retryablePatterns.some((p) => lower.includes(p.toLowerCase()));
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
+async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new Error("aborted")); return; }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new Error("aborted")); }, { once: true });
+  });
 }
 
 function getDelay(attempt: number): number {
@@ -34,7 +38,6 @@ export async function executeWithResilience(
   allowFallback: boolean,
   signal?: AbortSignal,
   cwd?: string,
-  env?: Record<string, string>,
   onLog?: (msg: string, level: "info" | "error" | "warning") => void
 ): Promise<ExecutionResult> {
   const chain: CliProvider[] = [primary];
@@ -61,14 +64,24 @@ export async function executeWithResilience(
     }
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (signal?.aborted) {
+        errors.push(`${provider}: aborted`);
+        break;
+      }
+
       if (attempt > 0) {
         const delay = getDelay(attempt - 1);
         onLog?.(`Retrying ${provider} (attempt ${attempt}) after ${Math.round(delay)}ms...`, "info");
-        await sleep(delay);
+        try {
+          await sleep(delay, signal);
+        } catch {
+          errors.push(`${provider}: aborted during retry backoff`);
+          break;
+        }
       }
 
       onLog?.(`Executing with ${provider}...`, "info");
-      const result = await executeCli(provider, prompt, mode, timeoutSeconds, signal, cwd, env);
+      const result = await executeCli(provider, prompt, mode, timeoutSeconds, signal, cwd);
 
       if (result.exitCode === 0 && result.stdout) {
         recordSuccess(provider);
@@ -100,6 +113,8 @@ export async function executeWithResilience(
         recordFailure(provider);
       }
     }
+
+    if (signal?.aborted) break;
   }
 
   onLog?.("All providers failed", "error");

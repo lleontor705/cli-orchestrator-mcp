@@ -14,12 +14,7 @@ export const CLI_DEFINITIONS: Record<CliProvider, CliDefinition> = {
   codex: {
     binary: "codex",
     strengths: ["code-generation", "edits", "refactoring", "full-auto"],
-    fallback_order: ["claude", "gemini", "ollama"],
-  },
-  ollama: {
-    binary: "ollama",
-    strengths: ["local", "privacy", "offline", "uncensored"],
-    fallback_order: ["claude", "gemini", "codex"],
+    fallback_order: ["claude", "gemini"],
   },
 };
 
@@ -31,14 +26,27 @@ export function buildArgs(
   switch (provider) {
     case "claude":
       return mode === "analyze"
-        ? ["--max-turns", "2", "-p", prompt]
-        : ["-p", prompt];
+        ? ["-p", prompt, "--max-turns", "10"]
+        : ["-p", prompt, "--allowedTools", ""];
     case "gemini":
       return ["-e", "none", "-p", prompt];
     case "codex":
       return ["exec", prompt, "--full-auto"];
-    case "ollama":
-      // We use a default model 'llama3' for general tasks
-      return ["run", "llama3", prompt];
+  }
+}
+
+export function buildStdinArgs(
+  provider: CliProvider,
+  mode: "generate" | "analyze"
+): string[] {
+  switch (provider) {
+    case "claude":
+      return mode === "analyze"
+        ? ["-p", "-", "--max-turns", "10"]
+        : ["-p", "-", "--allowedTools", ""];
+    case "gemini":
+      return ["-e", "none"];
+    case "codex":
+      return ["exec", "-", "--full-auto"];
   }
 }
