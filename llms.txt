@@ -1,0 +1,89 @@
+# cli-orchestrator-mcp
+
+> MCP Server for resilient multi-CLI orchestration — route AI tasks to Claude, Gemini, Codex, or Ollama with automatic retry, circuit breaker, and fallback.
+
+## Overview
+
+cli-orchestrator-mcp is a Model Context Protocol (MCP) server that orchestrates multiple AI CLI tools (Claude, Gemini, Codex, Ollama) with enterprise-grade resilience patterns. It auto-detects installed CLIs, routes tasks based on agent roles, and handles failures transparently via circuit breakers, retries with exponential backoff, and fallback chains.
+
+Install and run: `npx -y cli-orchestrator-mcp`
+
+## Tools
+
+The server exposes 4 MCP tools:
+
+- `cli_execute`: Execute a prompt on a CLI provider with full resilience (retry + circuit breaker + fallback). Params: `cli` (claude|gemini|codex|ollama), `prompt`, `mode` (generate|analyze), `timeout_seconds`, `allow_fallback`, `cwd`, `env`.
+- `cli_stats`: Health dashboard returning per-provider status including installation, circuit breaker state, execution count, failure count, and strengths.
+- `cli_list`: List all installed CLI providers with paths and capabilities.
+- `cli_route`: Recommend the best CLI for a task based on agent role (manager, coordinator, developer, researcher, reviewer, architect) and optional task description.
+
+## Resources
+
+- `mcp://cli-stats`: Real-time JSON health dashboard of all providers.
+
+## Prompts
+
+- `code_review`: Generate a code review prompt. Inputs: `code` (required), `language` (optional).
+- `architecture_design`: Generate an architecture design prompt. Inputs: `requirements` (required).
+
+## Role-based Routing
+
+Each agent role maps to a primary CLI with ordered fallbacks:
+
+- manager → Gemini (research, trends, large-context) → Claude → Codex → Ollama
+- coordinator → Claude (reasoning, planning, architecture) → Gemini → Codex → Ollama
+- developer → Codex (code-generation, refactoring) → Claude → Gemini → Ollama
+- researcher → Gemini (knowledge, web-search) → Claude → Ollama
+- reviewer → Claude (code-analysis, debugging) → Gemini → Ollama
+- architect → Claude (system design, architecture) → Gemini → Ollama
+
+## Resilience
+
+- **Circuit Breaker**: Per-provider isolation. 3 consecutive failures open the circuit for 60s. After cooldown, one test request is allowed (half-open). Success closes; failure reopens.
+- **Retry**: Max 2 retries with exponential backoff (base 1s, max 10s, ±30% jitter). Only retryable errors (timeouts, 429, 503).
+- **Fallback Chain**: If primary CLI fails permanently, the next provider in the fallback chain is tried automatically.
+
+## Security
+
+- Whitelist-based environment variable filtering — only safe vars forwarded to subprocesses
+- Automatic secret redaction (API keys, tokens) in logs and error output
+- No wholesale process.env forwarding to child processes
+
+## Configuration
+
+Add to Claude Code: `claude mcp add cli-orchestrator --transport stdio -- npx -y cli-orchestrator-mcp`
+
+Codex CLI (~/.codex/config.toml):
+```toml
+[mcp_servers.cli-orchestrator]
+command = "npx"
+args = ["-y", "cli-orchestrator-mcp"]
+```
+
+Gemini CLI (settings.json):
+```json
+{"mcpServers":{"cli-orchestrator":{"command":"npx","args":["-y","cli-orchestrator-mcp"]}}}
+```
+
+## Tech Stack
+
+- TypeScript, Node.js ≥18, ES2022 modules
+- @modelcontextprotocol/sdk for MCP protocol
+- execa for process execution
+- opossum for circuit breaker
+- zod for schema validation
+- vitest for testing
+
+## Source Structure
+
+- `src/index.ts` — Entry point, stdio transport setup
+- `src/server.ts` — MCP server initialization
+- `src/cli/definitions.ts` — CLI provider metadata and argument builders
+- `src/cli/detection.ts` — Auto-detection of installed CLIs (5-min cache)
+- `src/cli/executor.ts` — CLI process execution with Windows shim support
+- `src/cli/circuit-breaker.ts` — Circuit breaker state machine
+- `src/cli/resilience.ts` — Orchestrates retry, circuit breaker, fallback logic
+- `src/tools/orchestrator.ts` — MCP tools, prompts, and resources registration
+- `src/types/index.ts` — TypeScript type definitions
+- `src/utils/env-allowlist.ts` — Environment variable whitelist filtering
+- `src/utils/redact.ts` — Secret redaction utilities
