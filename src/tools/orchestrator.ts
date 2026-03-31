@@ -6,6 +6,7 @@ import { CLI_DEFINITIONS } from "../cli/definitions.js";
 import { detectAll, getDetectionCache } from "../cli/detection.js";
 import { getAllStates } from "../cli/circuit-breaker.js";
 import { executeWithResilience } from "../cli/resilience.js";
+import { redactSecrets } from "../utils/redact.js";
 
 const PROGRESS_INTERVAL_MS = 5_000;
 
@@ -104,7 +105,7 @@ export function registerOrchestratorTools(server: McpServer): void {
               duration_ms: result.duration_ms,
               fallback_used: result.fallback_used,
               attempts: result.attempts,
-              error: result.error,
+              error: result.error ? redactSecrets(result.error) : undefined,
             }),
           }],
         };

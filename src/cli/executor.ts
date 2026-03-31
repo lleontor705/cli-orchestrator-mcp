@@ -3,9 +3,12 @@ import path from "node:path";
 import os from "node:os";
 import type { CliProvider } from "../types/index.js";
 import { CLI_DEFINITIONS, buildArgs } from "./definitions.js";
+import { buildFilteredEnv } from "../utils/env-allowlist.js";
+import { redactSecrets } from "../utils/redact.js";
 
 const STDIN_THRESHOLD = 30_000;
 const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
+const LARGE_OUTPUT_THRESHOLD = 1 * 1024 * 1024; // 1MB — stream instead of buffering
 
 const isWindows = process.platform === "win32";
 
@@ -42,7 +45,7 @@ function resolveCommand(binary: string): { file: string; prefix: string[] } {
 }
 
 /** Build enhanced PATH that includes common Windows CLI install locations */
-function getEnhancedEnv(): Record<string, string> | undefined {
+function getEnhancedPath(): string | undefined {
   if (!isWindows) return undefined;
 
   const home = os.homedir();
@@ -54,9 +57,7 @@ function getEnhancedEnv(): Record<string, string> | undefined {
   ];
 
   const currentPath = process.env.PATH || "";
-  const newPath = [...extraPaths, currentPath].join(path.delimiter);
-
-  return { ...process.env, PATH: newPath } as Record<string, string>;
+  return [...extraPaths, currentPath].join(path.delimiter);
 }
 
 export async function executeCli(
@@ -74,37 +75,51 @@ export async function executeCli(
   // For large prompts, use stdin to avoid OS arg length limits
   const useStdin = prompt.length > STDIN_THRESHOLD;
 
+  // Build args as array — never via string concatenation / shell: true
   const args = useStdin
     ? buildArgs(provider, "", mode).filter((a) => a !== "")
     : buildArgs(provider, prompt, mode);
 
   const { file, prefix } = resolveCommand(binary);
   const finalArgs = [...prefix, ...args];
-  const env = getEnhancedEnv() || process.env;
-  const mergedEnv = customEnv ? { ...env, ...customEnv } : env;
+
+  // Build filtered env: only allowlisted vars + provider API keys
+  const filteredEnv = buildFilteredEnv(provider, customEnv);
+
+  // Enhance PATH on Windows
+  const enhancedPath = getEnhancedPath();
+  if (enhancedPath) {
+    filteredEnv.PATH = enhancedPath;
+  }
+
+  const timeoutMs = timeoutSeconds * 1000;
+
+  const baseOptions = {
+    timeout: timeoutMs,
+    windowsHide: true,
+    input: useStdin ? prompt : undefined,
+    reject: false,
+    cancelSignal: signal,
+    cwd,
+    env: filteredEnv,
+  } as const;
 
   try {
     const result = await execa(file, finalArgs, {
-      timeout: timeoutSeconds * 1000,
+      ...baseOptions,
       maxBuffer: MAX_BUFFER,
-      windowsHide: true,
-      input: useStdin ? prompt : undefined,
-      reject: false,
-      cancelSignal: signal,
-      cwd,
-      env: mergedEnv as Record<string, string>,
-    });
+    } as any);
 
     return {
       stdout: result.stdout || "",
-      stderr: result.stderr || "",
+      stderr: redactSecrets(result.stderr || ""),
       exitCode: result.exitCode ?? 1,
       duration_ms: Date.now() - start,
     };
   } catch (error: any) {
     return {
       stdout: "",
-      stderr: error.message || "Execution failed",
+      stderr: redactSecrets(error.message || "Execution failed"),
       exitCode: 1,
       duration_ms: Date.now() - start,
     };
