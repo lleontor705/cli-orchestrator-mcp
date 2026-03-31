@@ -13,6 +13,7 @@ import { redactSecrets } from "../utils/redact.js";
 
 const STDIN_THRESHOLD = 30_000;
 const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
+const LARGE_OUTPUT_THRESHOLD = 1 * 1024 * 1024; // 1MB — stream instead of buffering
 
 const isWindows = process.platform === "win32";
 
@@ -87,7 +88,7 @@ export async function executeCli(
 
   try {
     const result = await execa(file, finalArgs, {
-      timeout: timeoutSeconds * 1000,
+      ...baseOptions,
       maxBuffer: MAX_BUFFER,
       reject: false,
       windowsHide: true,
