@@ -1,152 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" fill="none">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" stop-opacity="1" />
-      <stop offset="100%" stop-color="#1e1b4b" stop-opacity="1" />
-    </linearGradient>
-    <linearGradient id="purple" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="100%" stop-color="#8b5cf6" />
-    </linearGradient>
-    <linearGradient id="cyan" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#06b6d4" />
-      <stop offset="100%" stop-color="#22d3ee" />
-    </linearGradient>
-    <linearGradient id="orange" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#fb923c" />
-    </linearGradient>
-    <linearGradient id="blue" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3b82f6" />
-      <stop offset="100%" stop-color="#60a5fa" />
-    </linearGradient>
-    <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981" />
-      <stop offset="100%" stop-color="#34d399" />
-    </linearGradient>
-  </defs>
-
-  <!-- Background -->
-  <rect width="900" height="520" rx="12" fill="url(#bgGrad)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520">
+  <rect width="900" height="520" rx="12" fill="#0f172a"/>
   <rect width="900" height="520" rx="12" fill="none" stroke="#334155" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="450" y="38" text-anchor="middle" fill="#e2e8f0" font-family="monospace, Consolas, Courier" font-size="20" font-weight="700">Architecture Overview</text>
+  <text x="450" y="38" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="20" font-weight="700">Architecture Overview</text>
   <line x1="300" y1="48" x2="600" y2="48" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-
-  <!-- Layer 1: MCP Clients -->
-  <text x="40" y="82" fill="#94a3b8" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600" letter-spacing="1">MCP CLIENTS</text>
-
+  <text x="40" y="82" fill="#94a3b8" font-family="monospace" font-size="11" font-weight="600">MCP CLIENTS</text>
   <rect x="40" y="92" width="130" height="44" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="105" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Claude Code</text>
-
+  <text x="105" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="13" font-weight="600">Claude Code</text>
   <rect x="190" y="92" width="130" height="44" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="255" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Codex CLI</text>
-
+  <text x="255" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="13" font-weight="600">Codex CLI</text>
   <rect x="340" y="92" width="130" height="44" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="405" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Gemini CLI</text>
-
+  <text x="405" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="13" font-weight="600">Gemini CLI</text>
   <rect x="490" y="92" width="130" height="44" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-  <text x="555" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">OpenCode</text>
-
+  <text x="555" y="118" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="13" font-weight="600">OpenCode</text>
   <rect x="640" y="92" width="130" height="44" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1" stroke-dasharray="4,3"/>
-  <text x="705" y="118" text-anchor="middle" fill="#64748b" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Any MCP Client</text>
-
-  <!-- Arrow: Clients to Server -->
-  <line x1="400" y1="140" x2="400" y2="165" stroke="#6366f1" stroke-width="2"/>
-  <polygon points="394,165 400,175 406,165" fill="#6366f1"/>
-  <text x="420" y="158" fill="#94a3b8" font-family="monospace, Consolas, Courier" font-size="10">stdio</text>
-
-  <!-- Layer 2: MCP Server -->
-  <rect x="200" y="178" width="500" height="50" rx="10" fill="url(#purple)" opacity="0.15" stroke="#6366f1" stroke-width="1.5"/>
-  <text x="450" y="206" text-anchor="middle" fill="#a78bfa" font-family="monospace, Consolas, Courier" font-size="17" font-weight="700">cli-orchestrator-mcp</text>
-  <text x="450" y="222" text-anchor="middle" fill="#818cf8" font-family="monospace, Consolas, Courier" font-size="10">@modelcontextprotocol/sdk</text>
-
-  <!-- Arrow: Server to Tools -->
-  <line x1="400" y1="230" x2="400" y2="252" stroke="#6366f1" stroke-width="2"/>
-  <polygon points="394,252 400,262 406,252" fill="#6366f1"/>
-
-  <!-- Layer 3: MCP Tools -->
-  <text x="40" y="272" fill="#94a3b8" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600" letter-spacing="1">MCP TOOLS</text>
-
-  <rect x="40" y="280" width="168" height="40" rx="6" fill="url(#purple)" opacity="0.2" stroke="#818cf8" stroke-width="1"/>
-  <text x="124" y="304" text-anchor="middle" fill="#c4b5fd" font-family="monospace, Consolas, Courier" font-size="12" font-weight="600">cli_execute</text>
-
-  <rect x="228" y="280" width="148" height="40" rx="6" fill="url(#purple)" opacity="0.2" stroke="#818cf8" stroke-width="1"/>
-  <text x="302" y="304" text-anchor="middle" fill="#c4b5fd" font-family="monospace, Consolas, Courier" font-size="12" font-weight="600">cli_route</text>
-
-  <rect x="396" y="280" width="148" height="40" rx="6" fill="url(#purple)" opacity="0.2" stroke="#818cf8" stroke-width="1"/>
-  <text x="470" y="304" text-anchor="middle" fill="#c4b5fd" font-family="monospace, Consolas, Courier" font-size="12" font-weight="600">cli_stats</text>
-
-  <rect x="564" y="280" width="148" height="40" rx="6" fill="url(#purple)" opacity="0.2" stroke="#818cf8" stroke-width="1"/>
-  <text x="638" y="304" text-anchor="middle" fill="#c4b5fd" font-family="monospace, Consolas, Courier" font-size="12" font-weight="600">cli_list</text>
-
-  <!-- Arrow: cli_execute to Resilience -->
-  <line x1="124" y1="322" x2="124" y2="348" stroke="#06b6d4" stroke-width="2"/>
-  <polygon points="118,348 124,358 130,348" fill="#06b6d4"/>
-
-  <!-- Layer 4: Resilience Pipeline -->
-  <text x="40" y="370" fill="#94a3b8" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600" letter-spacing="1">RESILIENCE PIPELINE</text>
-
-  <rect x="40" y="378" width="820" height="52" rx="8" fill="#0c4a6e" opacity="0.2" stroke="#0891b2" stroke-width="1"/>
-
-  <!-- Pipeline steps -->
-  <rect x="55" y="388" width="110" height="32" rx="5" fill="url(#cyan)" opacity="0.25" stroke="#22d3ee" stroke-width="1"/>
-  <text x="110" y="408" text-anchor="middle" fill="#67e8f9" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600">Global Budget</text>
-
-  <!-- Arrow polygon -->
-  <polygon points="172,400 182,404 172,408" fill="#475569"/>
-
-  <rect x="190" y="388" width="130" height="32" rx="5" fill="url(#cyan)" opacity="0.25" stroke="#22d3ee" stroke-width="1"/>
-  <text x="255" y="408" text-anchor="middle" fill="#67e8f9" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600">Circuit Breaker</text>
-
-  <polygon points="327,400 337,404 327,408" fill="#475569"/>
-
-  <rect x="345" y="388" width="100" height="32" rx="5" fill="url(#cyan)" opacity="0.25" stroke="#22d3ee" stroke-width="1"/>
-  <text x="395" y="408" text-anchor="middle" fill="#67e8f9" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600">Execute CLI</text>
-
-  <polygon points="452,400 462,404 452,408" fill="#475569"/>
-
-  <rect x="470" y="388" width="120" height="32" rx="5" fill="url(#cyan)" opacity="0.25" stroke="#22d3ee" stroke-width="1"/>
-  <text x="530" y="408" text-anchor="middle" fill="#67e8f9" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600">Retry+Backoff</text>
-
-  <polygon points="597,400 607,404 597,408" fill="#475569"/>
-
-  <rect x="615" y="388" width="100" height="32" rx="5" fill="url(#cyan)" opacity="0.25" stroke="#22d3ee" stroke-width="1"/>
-  <text x="665" y="408" text-anchor="middle" fill="#67e8f9" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600">Fallback</text>
-
-  <polygon points="722,400 732,404 722,408" fill="#475569"/>
-
-  <rect x="740" y="388" width="105" height="32" rx="5" fill="url(#cyan)" opacity="0.25" stroke="#22d3ee" stroke-width="1"/>
-  <text x="792" y="408" text-anchor="middle" fill="#67e8f9" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600">Redact</text>
-
-  <!-- Arrow: Pipeline to CLI Providers -->
-  <line x1="400" y1="432" x2="400" y2="454" stroke="#06b6d4" stroke-width="2"/>
-  <polygon points="394,454 400,464 406,454" fill="#06b6d4"/>
-
-  <!-- Layer 5: CLI Providers -->
-  <text x="40" y="476" fill="#94a3b8" font-family="monospace, Consolas, Courier" font-size="11" font-weight="600" letter-spacing="1">CLI PROVIDERS</text>
-
-  <rect x="120" y="480" width="170" height="30" rx="8" fill="url(#orange)" opacity="0.15" stroke="#f97316" stroke-width="1.5"/>
-  <circle cx="140" cy="495" r="8" fill="#f97316" opacity="0.8"/>
-  <text x="140" y="499" text-anchor="middle" fill="white" font-family="monospace, Consolas, Courier" font-size="9" font-weight="bold">C</text>
-  <text x="215" y="499" text-anchor="middle" fill="#fdba74" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Claude CLI</text>
-
-  <rect x="365" y="480" width="170" height="30" rx="8" fill="url(#blue)" opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
-  <circle cx="385" cy="495" r="8" fill="#3b82f6" opacity="0.8"/>
-  <text x="385" y="499" text-anchor="middle" fill="white" font-family="monospace, Consolas, Courier" font-size="9" font-weight="bold">G</text>
-  <text x="460" y="499" text-anchor="middle" fill="#93c5fd" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Gemini CLI</text>
-
-  <rect x="610" y="480" width="170" height="30" rx="8" fill="url(#green)" opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-  <circle cx="630" cy="495" r="8" fill="#10b981" opacity="0.8"/>
-  <text x="630" y="499" text-anchor="middle" fill="white" font-family="monospace, Consolas, Courier" font-size="9" font-weight="bold">X</text>
-  <text x="705" y="499" text-anchor="middle" fill="#6ee7b7" font-family="monospace, Consolas, Courier" font-size="13" font-weight="600">Codex CLI</text>
-
-  <!-- Fallback arrows between providers (simple dashed lines + triangles) -->
-  <line x1="290" y1="495" x2="360" y2="495" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
-  <polygon points="357,491 365,495 357,499" fill="#f59e0b" opacity="0.5"/>
-  <line x1="535" y1="495" x2="605" y2="495" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
-  <polygon points="602,491 610,495 602,499" fill="#f59e0b" opacity="0.5"/>
-  <text x="325" y="488" fill="#fbbf24" font-family="monospace, Consolas, Courier" font-size="9" opacity="0.7">fallback</text>
-  <text x="570" y="488" fill="#fbbf24" font-family="monospace, Consolas, Courier" font-size="9" opacity="0.7">fallback</text>
+  <text x="705" y="118" text-anchor="middle" fill="#64748b" font-family="monospace" font-size="13" font-weight="600">Any MCP Client</text>
+  <line x1="400" y1="140" x2="400" y2="168" stroke="#6366f1" stroke-width="2"/>
+  <polygon points="394,168 400,178 406,168" fill="#6366f1"/>
+  <text x="420" y="160" fill="#94a3b8" font-family="monospace" font-size="10">stdio</text>
+  <rect x="200" y="182" width="500" height="50" rx="10" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="450" y="210" text-anchor="middle" fill="#a78bfa" font-family="monospace" font-size="17" font-weight="700">cli-orchestrator-mcp</text>
+  <text x="450" y="226" text-anchor="middle" fill="#818cf8" font-family="monospace" font-size="10">@modelcontextprotocol/sdk</text>
+  <line x1="400" y1="234" x2="400" y2="258" stroke="#6366f1" stroke-width="2"/>
+  <polygon points="394,258 400,268 406,258" fill="#6366f1"/>
+  <text x="40" y="278" fill="#94a3b8" font-family="monospace" font-size="11" font-weight="600">MCP TOOLS</text>
+  <rect x="40" y="286" width="168" height="40" rx="6" fill="#1e1b4b" stroke="#818cf8" stroke-width="1"/>
+  <text x="124" y="310" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="12" font-weight="600">cli_execute</text>
+  <rect x="228" y="286" width="148" height="40" rx="6" fill="#1e1b4b" stroke="#818cf8" stroke-width="1"/>
+  <text x="302" y="310" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="12" font-weight="600">cli_route</text>
+  <rect x="396" y="286" width="148" height="40" rx="6" fill="#1e1b4b" stroke="#818cf8" stroke-width="1"/>
+  <text x="470" y="310" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="12" font-weight="600">cli_stats</text>
+  <rect x="564" y="286" width="148" height="40" rx="6" fill="#1e1b4b" stroke="#818cf8" stroke-width="1"/>
+  <text x="638" y="310" text-anchor="middle" fill="#c4b5fd" font-family="monospace" font-size="12" font-weight="600">cli_list</text>
+  <line x1="124" y1="328" x2="124" y2="356" stroke="#06b6d4" stroke-width="2"/>
+  <polygon points="118,356 124,366 130,356" fill="#06b6d4"/>
+  <text x="40" y="378" fill="#94a3b8" font-family="monospace" font-size="11" font-weight="600">RESILIENCE PIPELINE</text>
+  <rect x="40" y="386" width="820" height="52" rx="8" fill="#0c4a6e" stroke="#0891b2" stroke-width="1"/>
+  <rect x="55" y="396" width="110" height="32" rx="5" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="110" y="416" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="11" font-weight="600">Global Budget</text>
+  <polygon points="172,408 182,412 172,416" fill="#475569"/>
+  <rect x="190" y="396" width="130" height="32" rx="5" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="255" y="416" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="11" font-weight="600">Circuit Breaker</text>
+  <polygon points="327,408 337,412 327,416" fill="#475569"/>
+  <rect x="345" y="396" width="100" height="32" rx="5" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="395" y="416" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="11" font-weight="600">Execute CLI</text>
+  <polygon points="452,408 462,412 452,416" fill="#475569"/>
+  <rect x="470" y="396" width="120" height="32" rx="5" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="530" y="416" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="11" font-weight="600">Retry+Backoff</text>
+  <polygon points="597,408 607,412 597,416" fill="#475569"/>
+  <rect x="615" y="396" width="100" height="32" rx="5" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="665" y="416" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="11" font-weight="600">Fallback</text>
+  <polygon points="722,408 732,412 722,416" fill="#475569"/>
+  <rect x="740" y="396" width="105" height="32" rx="5" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="792" y="416" text-anchor="middle" fill="#67e8f9" font-family="monospace" font-size="11" font-weight="600">Redact</text>
+  <line x1="400" y1="440" x2="400" y2="460" stroke="#06b6d4" stroke-width="2"/>
+  <polygon points="394,460 400,470 406,460" fill="#06b6d4"/>
+  <text x="40" y="482" fill="#94a3b8" font-family="monospace" font-size="11" font-weight="600">CLI PROVIDERS</text>
+  <rect x="120" y="486" width="170" height="30" rx="8" fill="#431407" stroke="#f97316" stroke-width="1.5"/>
+  <circle cx="140" cy="501" r="8" fill="#f97316"/>
+  <text x="140" y="505" text-anchor="middle" fill="white" font-family="monospace" font-size="9" font-weight="bold">C</text>
+  <text x="215" y="505" text-anchor="middle" fill="#fdba74" font-family="monospace" font-size="13" font-weight="600">Claude CLI</text>
+  <rect x="365" y="486" width="170" height="30" rx="8" fill="#172554" stroke="#3b82f6" stroke-width="1.5"/>
+  <circle cx="385" cy="501" r="8" fill="#3b82f6"/>
+  <text x="385" y="505" text-anchor="middle" fill="white" font-family="monospace" font-size="9" font-weight="bold">G</text>
+  <text x="460" y="505" text-anchor="middle" fill="#93c5fd" font-family="monospace" font-size="13" font-weight="600">Gemini CLI</text>
+  <rect x="610" y="486" width="170" height="30" rx="8" fill="#052e16" stroke="#10b981" stroke-width="1.5"/>
+  <circle cx="630" cy="501" r="8" fill="#10b981"/>
+  <text x="630" y="505" text-anchor="middle" fill="white" font-family="monospace" font-size="9" font-weight="bold">X</text>
+  <text x="705" y="505" text-anchor="middle" fill="#6ee7b7" font-family="monospace" font-size="13" font-weight="600">Codex CLI</text>
+  <line x1="290" y1="501" x2="357" y2="501" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+  <polygon points="357,497 365,501 357,505" fill="#f59e0b" opacity="0.6"/>
+  <line x1="535" y1="501" x2="602" y2="501" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+  <polygon points="602,497 610,501 602,505" fill="#f59e0b" opacity="0.6"/>
+  <text x="325" y="494" fill="#fbbf24" font-family="monospace" font-size="9" opacity="0.7">fallback</text>
+  <text x="570" y="494" fill="#fbbf24" font-family="monospace" font-size="9" opacity="0.7">fallback</text>
 </svg>
