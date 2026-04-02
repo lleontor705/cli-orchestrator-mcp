@@ -1,6 +1,7 @@
 import type { CliProvider, CircuitBreaker, CircuitState } from "../types/index.js";
 
 const FAILURE_THRESHOLD = 3;
+const TIMEOUT_THRESHOLD = 5;
 const COOLDOWN_MS = 60_000;
 const HALF_OPEN_SUCCESSES = 1;
 
@@ -11,10 +12,12 @@ function getOrCreate(provider: CliProvider): CircuitBreaker {
     breakers.set(provider, {
       state: "closed",
       failures: 0,
+      timeouts: 0,
       last_failure: null,
       successes_in_half_open: 0,
       total_executions: 0,
       total_failures: 0,
+      total_timeouts: 0,
     });
   }
   return breakers.get(provider)!;
@@ -51,6 +54,7 @@ export function recordSuccess(provider: CliProvider): void {
   } else {
     cb.failures = 0;
   }
+  cb.timeouts = 0;
 }
 
 export function recordFailure(provider: CliProvider): void {
@@ -63,6 +67,20 @@ export function recordFailure(provider: CliProvider): void {
   if (cb.state === "half_open") {
     cb.state = "open";
   } else if (cb.failures >= FAILURE_THRESHOLD) {
+    cb.state = "open";
+  }
+}
+
+export function recordTimeout(provider: CliProvider): void {
+  const cb = getOrCreate(provider);
+  cb.total_executions++;
+  cb.total_timeouts++;
+  cb.timeouts++;
+  cb.last_failure = Date.now();
+
+  if (cb.state === "half_open") {
+    cb.state = "open";
+  } else if (cb.timeouts >= TIMEOUT_THRESHOLD) {
     cb.state = "open";
   }
 }
