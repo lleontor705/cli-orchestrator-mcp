@@ -32,6 +32,7 @@ describe("executeWithResilience", () => {
       stderr: "",
       exitCode: 0,
       duration_ms: 100,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, true);
@@ -51,6 +52,7 @@ describe("executeWithResilience", () => {
       stderr: "fatal error",
       exitCode: 1,
       duration_ms: 50,
+      timedOut: false,
     });
     // Gemini succeeds
     mockExecuteCli.mockResolvedValueOnce({
@@ -58,6 +60,7 @@ describe("executeWithResilience", () => {
       stderr: "",
       exitCode: 0,
       duration_ms: 200,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, true);
@@ -68,13 +71,14 @@ describe("executeWithResilience", () => {
     expect(result.fallback_used).toBe(true);
   });
 
-  it("retries on retryable errors (timeout)", async () => {
-    // First attempt: retryable timeout
+  it("retries on retryable errors (ETIMEDOUT network timeout)", async () => {
+    // First attempt: retryable network timeout
     mockExecuteCli.mockResolvedValueOnce({
       stdout: "",
       stderr: "ETIMEDOUT connection timed out",
       exitCode: 1,
       duration_ms: 5000,
+      timedOut: false,
     });
     // Second attempt: success
     mockExecuteCli.mockResolvedValueOnce({
@@ -82,6 +86,7 @@ describe("executeWithResilience", () => {
       stderr: "",
       exitCode: 0,
       duration_ms: 100,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, true);
@@ -100,6 +105,7 @@ describe("executeWithResilience", () => {
       stderr: "rate limit exceeded",
       exitCode: 1,
       duration_ms: 100,
+      timedOut: false,
     });
     // Second attempt: success
     mockExecuteCli.mockResolvedValueOnce({
@@ -107,6 +113,7 @@ describe("executeWithResilience", () => {
       stderr: "",
       exitCode: 0,
       duration_ms: 100,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, true);
@@ -116,24 +123,27 @@ describe("executeWithResilience", () => {
   });
 
   it("exhausts retries then falls back", async () => {
-    // Claude: 3 retryable failures (attempt 0, 1, 2 = MAX_RETRIES)
+    // Claude: 3 retryable failures (rate limit — retryable)
     mockExecuteCli.mockResolvedValueOnce({
       stdout: "",
-      stderr: "timeout error",
+      stderr: "rate limit exceeded",
       exitCode: 1,
       duration_ms: 100,
+      timedOut: false,
     });
     mockExecuteCli.mockResolvedValueOnce({
       stdout: "",
-      stderr: "timeout error",
+      stderr: "rate limit exceeded",
       exitCode: 1,
       duration_ms: 100,
+      timedOut: false,
     });
     mockExecuteCli.mockResolvedValueOnce({
       stdout: "",
-      stderr: "timeout error",
+      stderr: "rate limit exceeded",
       exitCode: 1,
       duration_ms: 100,
+      timedOut: false,
     });
     // Gemini succeeds
     mockExecuteCli.mockResolvedValueOnce({
@@ -141,6 +151,7 @@ describe("executeWithResilience", () => {
       stderr: "",
       exitCode: 0,
       duration_ms: 200,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, true);
@@ -157,6 +168,7 @@ describe("executeWithResilience", () => {
       stderr: "fatal error",
       exitCode: 1,
       duration_ms: 50,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, true);
@@ -173,6 +185,7 @@ describe("executeWithResilience", () => {
       stderr: "fatal error",
       exitCode: 1,
       duration_ms: 50,
+      timedOut: false,
     });
 
     const result = await executeWithResilience("claude", "test", "generate", 30, false);
@@ -190,6 +203,7 @@ describe("executeWithResilience", () => {
       stderr: "fatal error",
       exitCode: 1,
       duration_ms: 50,
+      timedOut: false,
     });
 
     // First call: claude fails, gemini fails, codex fails (3 providers, 1 call each)
@@ -205,5 +219,77 @@ describe("executeWithResilience", () => {
     expect(result.success).toBe(false);
     // No actual executeCli calls should be made since circuit breakers are open
     expect(mockExecuteCli).toHaveBeenCalledTimes(0);
+  });
+});
+
+describe("executeWithResilience — timeout improvements", () => {
+  it("does not retry on process timeout, moves to fallback immediately", async () => {
+    // Claude: process timeout (timedOut=true)
+    mockExecuteCli.mockResolvedValueOnce({
+      stdout: "",
+      stderr: "timed out",
+      exitCode: 1,
+      duration_ms: 30000,
+      timedOut: true,
+    });
+    // Gemini succeeds
+    mockExecuteCli.mockResolvedValueOnce({
+      stdout: "fallback success",
+      stderr: "",
+      exitCode: 0,
+      duration_ms: 200,
+      timedOut: false,
+    });
+
+    const result = await executeWithResilience("claude", "test", "generate", 30, true);
+
+    expect(result.success).toBe(true);
+    expect(result.provider).toBe("gemini");
+    expect(result.fallback_used).toBe(true);
+    // Only 2 calls: 1 timeout on claude + 1 success on gemini (no retries)
+    expect(mockExecuteCli).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes remaining budget seconds to executeCli, not the full timeout", async () => {
+    mockExecuteCli.mockResolvedValueOnce({
+      stdout: "ok",
+      stderr: "",
+      exitCode: 0,
+      duration_ms: 50,
+      timedOut: false,
+    });
+
+    await executeWithResilience("claude", "test", "generate", 60, true);
+
+    // The first call should receive <= 60 seconds (remaining budget)
+    const callArgs = mockExecuteCli.mock.calls[0];
+    const timeoutArg = callArgs[3]; // 4th arg is timeoutSeconds
+    expect(timeoutArg).toBeLessThanOrEqual(60);
+    expect(timeoutArg).toBeGreaterThan(0);
+  });
+
+  it("ETIMEDOUT (network timeout) is still retried", async () => {
+    // Network timeout — retryable
+    mockExecuteCli.mockResolvedValueOnce({
+      stdout: "",
+      stderr: "ETIMEDOUT",
+      exitCode: 1,
+      duration_ms: 100,
+      timedOut: false,
+    });
+    // Success on retry
+    mockExecuteCli.mockResolvedValueOnce({
+      stdout: "recovered",
+      stderr: "",
+      exitCode: 0,
+      duration_ms: 100,
+      timedOut: false,
+    });
+
+    const result = await executeWithResilience("claude", "test", "generate", 60, true);
+
+    expect(result.success).toBe(true);
+    expect(result.attempts).toBe(2);
+    expect(result.provider).toBe("claude");
   });
 });

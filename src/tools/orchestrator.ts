@@ -50,7 +50,7 @@ export function registerOrchestratorTools(server: McpServer): void {
       cli: z.enum(CLI_PROVIDERS).describe("Target CLI provider"),
       prompt: z.string().min(1).max(100000).describe("Prompt to send to the CLI"),
       mode: z.enum(["generate", "analyze"]).default("generate").describe("Execution mode"),
-      timeout_seconds: z.number().min(10).max(1800).default(720).describe("Timeout in seconds"),
+      timeout_seconds: z.number().min(10).max(1800).default(300).describe("Global timeout budget in seconds (covers all retries and fallbacks)"),
       allow_fallback: z.boolean().default(true).describe("Allow fallback to other CLIs on failure"),
       cwd: z.string().optional().describe("Working directory for execution"),
     },
@@ -62,16 +62,24 @@ export function registerOrchestratorTools(server: McpServer): void {
       let progressTick = 0;
       let progressTimer: ReturnType<typeof setInterval> | undefined;
 
+      // State tracked from resilience log messages for enriched progress
+      let currentProvider: string = cli;
+      let currentAttempt = 0;
+      let chainPosition = 0;
+
       if (progressToken !== undefined) {
         progressTimer = setInterval(() => {
           progressTick++;
+          const elapsed = progressTick * (PROGRESS_INTERVAL_MS / 1000);
+          const remaining = Math.max(0, timeout_seconds - elapsed);
+          const stateLabel = chainPosition > 0 ? `fallback #${chainPosition}` : "primary";
           extra.sendNotification({
             method: "notifications/progress",
             params: {
               progressToken,
               progress: progressTick,
               total: Math.ceil(timeout_seconds / (PROGRESS_INTERVAL_MS / 1000)),
-              message: `CLI execution in progress (${progressTick * (PROGRESS_INTERVAL_MS / 1000)}s elapsed)`,
+              message: `[${currentProvider}] ${stateLabel}, attempt ${currentAttempt + 1}, ${Math.round(elapsed)}s elapsed, ${Math.round(remaining)}s remaining`,
             },
           }).catch(() => {});
         }, PROGRESS_INTERVAL_MS);
@@ -87,7 +95,17 @@ export function registerOrchestratorTools(server: McpServer): void {
           extra.signal,
           cwd,
           (msg, level) => {
-            // MCP standard logging levels
+            // Extract state from resilience log messages for progress enrichment
+            const execMatch = msg.match(/^Executing with (\w+)/);
+            if (execMatch) {
+              if (execMatch[1] !== cli) chainPosition++;
+              currentProvider = execMatch[1];
+              currentAttempt = 0;
+            }
+            const retryMatch = msg.match(/^Retrying (\w+) \(attempt (\d+)\)/);
+            if (retryMatch) {
+              currentAttempt = parseInt(retryMatch[2], 10);
+            }
             const mcpLevel = level === "error" ? "error" : level === "warning" ? "warning" : "info";
             server.server.sendLoggingMessage({ level: mcpLevel, data: msg }).catch(() => {});
           }

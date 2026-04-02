@@ -15,10 +15,12 @@ export type CircuitState = "closed" | "open" | "half_open";
 export interface CircuitBreaker {
   state: CircuitState;
   failures: number;
+  timeouts: number;
   last_failure: number | null;
   successes_in_half_open: number;
   total_executions: number;
   total_failures: number;
+  total_timeouts: number;
 }
 
 export interface DetectionResult {

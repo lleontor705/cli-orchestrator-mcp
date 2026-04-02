@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CLI_PROVIDERS, AGENT_ROLES, ROLE_ROUTING } from "../src/types/index.js";
-import { CLI_DEFINITIONS, buildArgs } from "../src/cli/definitions.js";
+import { CLI_DEFINITIONS, buildArgs, buildTimeoutArgs } from "../src/cli/definitions.js";
 
 describe("CLI Definitions", () => {
   it("has definitions for all providers", () => {
@@ -35,10 +35,37 @@ describe("CLI Definitions", () => {
     expect(args).toContain("--full-auto");
   });
 
-  it("claude analyze mode uses max-turns", () => {
+  it("claude analyze mode does not hardcode max-turns (delegated to buildTimeoutArgs)", () => {
     const args = buildArgs("claude", "test", "analyze");
-    expect(args).toContain("--max-turns");
-    expect(args).toContain("10");
+    expect(args).not.toContain("--max-turns");
+  });
+});
+
+describe("buildTimeoutArgs", () => {
+  it("generates --max-turns for claude scaled by remaining time", () => {
+    // 300s → floor(300/30) = 10 turns
+    const args = buildTimeoutArgs("claude", 300);
+    expect(args).toEqual(["--max-turns", "10"]);
+  });
+
+  it("clamps claude max-turns to minimum 2", () => {
+    // 10s → floor(10/30) = 0, clamped to 2
+    const args = buildTimeoutArgs("claude", 10);
+    expect(args).toEqual(["--max-turns", "2"]);
+  });
+
+  it("clamps claude max-turns to maximum 25", () => {
+    // 1800s → floor(1800/30) = 60, clamped to 25
+    const args = buildTimeoutArgs("claude", 1800);
+    expect(args).toEqual(["--max-turns", "25"]);
+  });
+
+  it("returns empty array for gemini", () => {
+    expect(buildTimeoutArgs("gemini", 300)).toEqual([]);
+  });
+
+  it("returns empty array for codex", () => {
+    expect(buildTimeoutArgs("codex", 300)).toEqual([]);
   });
 });
 

@@ -7,7 +7,7 @@ import { execa } from "execa";
 import path from "node:path";
 import os from "node:os";
 import type { CliProvider } from "../types/index.js";
-import { CLI_DEFINITIONS, buildArgs, buildStdinArgs } from "./definitions.js";
+import { CLI_DEFINITIONS, buildArgs, buildStdinArgs, buildTimeoutArgs } from "./definitions.js";
 import { getSafeEnv } from "../utils/env-allowlist.js";
 import { redactSecrets } from "../utils/redact.js";
 
@@ -20,6 +20,7 @@ export interface ExecResult {
   stderr: string;
   exitCode: number;
   duration_ms: number;
+  timedOut: boolean;
 }
 
 /**
@@ -70,9 +71,11 @@ export async function executeCli(
   const start = Date.now();
 
   const useStdin = prompt.length > STDIN_THRESHOLD;
-  const args = useStdin
+  const baseArgs = useStdin
     ? buildStdinArgs(provider, mode)
     : buildArgs(provider, prompt, mode);
+  const timeoutHints = buildTimeoutArgs(provider, timeoutSeconds);
+  const args = [...baseArgs, ...timeoutHints];
 
   const { file, prefix } = resolveCommand(binary);
   const finalArgs = [...prefix, ...args];
@@ -101,6 +104,7 @@ export async function executeCli(
       stderr: redactSecrets(result.stderr || ""),
       exitCode: result.exitCode ?? 1,
       duration_ms: Date.now() - start,
+      timedOut: result.timedOut ?? false,
     };
   } catch (error: any) {
     return {
@@ -108,6 +112,7 @@ export async function executeCli(
       stderr: redactSecrets(error.message || "Execution failed"),
       exitCode: 1,
       duration_ms: Date.now() - start,
+      timedOut: !!error.timedOut,
     };
   }
 }

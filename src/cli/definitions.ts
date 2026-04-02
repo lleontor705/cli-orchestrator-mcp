@@ -26,7 +26,7 @@ export function buildArgs(
   switch (provider) {
     case "claude":
       return mode === "analyze"
-        ? ["-p", prompt, "--max-turns", "10"]
+        ? ["-p", prompt]
         : ["-p", prompt, "--allowedTools", ""];
     case "gemini":
       return ["-e", "none", "-p", prompt];
@@ -42,11 +42,32 @@ export function buildStdinArgs(
   switch (provider) {
     case "claude":
       return mode === "analyze"
-        ? ["-p", "-", "--max-turns", "10"]
+        ? ["-p", "-"]
         : ["-p", "-", "--allowedTools", ""];
     case "gemini":
       return ["-e", "none"];
     case "codex":
       return ["exec", "-", "--full-auto"];
+  }
+}
+
+/**
+ * Generate CLI-specific args that hint at timeout constraints.
+ * Claude: --max-turns scales with available time (~1 turn per 30s).
+ * Gemini/Codex: no known timeout flags.
+ */
+export function buildTimeoutArgs(
+  provider: CliProvider,
+  remainingSeconds: number,
+): string[] {
+  switch (provider) {
+    case "claude": {
+      const maxTurns = Math.max(2, Math.min(25, Math.floor(remainingSeconds / 30)));
+      return ["--max-turns", String(maxTurns)];
+    }
+    case "gemini":
+      return [];
+    case "codex":
+      return [];
   }
 }
