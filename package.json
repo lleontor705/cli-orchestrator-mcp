@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build && npm test",
-    "inspect": "npx @modelcontextprotocol/inspector node build/index.js"
+    "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
+    "prepare": "husky"
   },
   "keywords": [
     "mcp",
@@ -55,6 +56,7 @@
     "@types/opossum": "^8.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "husky": "^9.1.7"
   }
 }
