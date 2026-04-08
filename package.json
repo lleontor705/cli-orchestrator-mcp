@@ -4,6 +4,14 @@
   "description": "MCP Server for resilient multi-CLI orchestration — route AI tasks to Claude, Gemini, or Codex with retry, circuit breaker, and fallback",
   "type": "module",
   "main": "./build/index.js",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./build/index.js",
+      "types": "./build/index.d.ts"
+    }
+  },
   "bin": {
     "cli-orchestrator-mcp": "build/index.js"
   },
